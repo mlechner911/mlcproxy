@@ -48,26 +48,40 @@ func Start(addr string) error {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
 	handler := &ProxyHandler{
-		statsPath: config.Cfg.Paths.StatsPath,
-		apiPath:   config.Cfg.Paths.APIPath,
-		statsHost: "stats.local", // Explizit setzen, unabhängig von der Konfiguration
+		statsPath:   config.Cfg.Paths.StatsPath,
+		apiPath:     config.Cfg.Paths.APIPath,
+		statsHost:   config.Cfg.Features.StatsHost,
+		authManager: &AuthManager{},
 	}
+
+	// Logge Sicherheitseinstellungen
+	log.Printf("Sicherheitseinstellungen:")
+	if config.Cfg.Auth.EnableAuth {
+		log.Printf("- Basic Auth aktiviert mit %d Benutzern", len(config.Cfg.Auth.Credentials))
+	} else {
+		log.Printf("- Basic Auth deaktiviert")
+	}
+
+	log.Printf("- Erlaubte Netzwerke: %v", config.Cfg.Security.AllowedNetworks)
+	log.Printf("- Statistik-Host %s ist immer zugelassen", handler.statsHost)
 
 	server := &http.Server{
 		Addr:    addr,
 		Handler: handler,
 	}
 
-	log.Printf("Starting proxy server on %s", addr)
-	log.Printf("Statistics available at http://stats.local%s", addr)
-	log.Printf("Configure your proxy to use http://%s", addr)
+	log.Printf("Starte Proxy-Server auf %s", addr)
+	log.Printf("Statistiken verfügbar unter http://%s%s", handler.statsHost, handler.statsPath)
+	log.Printf("Konfigurieren Sie Ihren Browser für http://%s als Proxy", addr)
 	return server.ListenAndServe()
 }
 
+// ProxyHandler verarbeitet die Proxy-Anfragen
 type ProxyHandler struct {
-	statsPath string
-	apiPath   string
-	statsHost string
+	statsPath   string
+	apiPath     string
+	statsHost   string
+	authManager *AuthManager
 }
 
 func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -77,14 +91,34 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		host = strings.Split(host, ":")[0]
 	}
 
-	// Prüfe auf Statistik-Host
+	// Prüfe auf Statistik-Host (immer erlaubt)
 	if host == h.statsHost {
 		h.handleStats(w, r)
 		return
 	}
 
+	// Extrahiere Client-IP
+	clientIP := getClientIP(r)
+
+	// Überprüfe Client-IP
+	if !h.authManager.IsIPAllowed(clientIP) {
+		log.Printf("Zugriff verweigert für IP %s - nicht im erlaubten Netzwerk (%v)",
+			clientIP, config.Cfg.Security.AllowedNetworks)
+		http.Error(w, "Access denied - IP not in allowed networks", http.StatusForbidden)
+		stats.LogRequest(r, http.StatusForbidden, 0, 0)
+		return
+	}
+
+	// Überprüfe Auth wenn aktiviert
+	if config.Cfg.Auth.EnableAuth && !h.authManager.CheckAuth(r) {
+		log.Printf("Auth fehlgeschlagen für IP %s", clientIP)
+		h.authManager.RequireAuth(w)
+		stats.LogRequest(r, http.StatusProxyAuthRequired, 0, 0)
+		return
+	}
+
 	// Logge alle anderen Anfragen
-	log.Printf("Proxy request: %s %s %s", r.Method, r.Host, r.URL.String())
+	log.Printf("Proxy request: %s %s %s von IP %s", r.Method, r.Host, r.URL.String(), clientIP)
 
 	// HTTPS CONNECT requests
 	if r.Method == http.MethodConnect {
@@ -313,3 +347,5 @@ func handleStatsPage(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}
 }
+
+// Diese Funktionen wurden in den AuthManager verschoben
