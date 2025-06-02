@@ -1,0 +1,36 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Go source files
+*.go text diff=go
+
+# Web files
+*.html text diff=html
+*.css text diff=css
+*.js text diff=javascript
+*.svg text
+
+# Documentation
+*.md text diff=markdown
+LICENSE text
+
+# Config files
+*.ini text
+*.json text
+*.yaml text
+*.yml text
+
+# Binary files
+*.exe binary
+*.dll binary
+*.so binary
+*.dylib binary
+
+# Go modules
+go.mod text
+go.sum text
+
+# Make sure Windows batch files preserve CR/LF line endings
+*.{cmd,[cC][mM][dD]} text eol=crlf
+*.{bat,[bB][aA][tT]} text eol=crlf
+*.{ps1,[pP][sS]1} text eol=crlf

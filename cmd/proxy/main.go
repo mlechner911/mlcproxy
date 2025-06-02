@@ -13,15 +13,23 @@ import (
 	"log"
 	"mlc_goproxy/internal/config"
 	"mlc_goproxy/internal/proxy"
+	"mlc_goproxy/internal/version"
 )
 
 func main() {
 	// Command line flags
 	proxyPort := flag.Int("port", 0, "Port für den Proxy-Server (überschreibt config.ini)")
+	showVersion := flag.Bool("version", false, "Show version information and exit")
 	flag.Parse()
 
+	if *showVersion {
+		fmt.Printf("MLCProxy %s\n", version.GetVersionInfo())
+		fmt.Println(version.Copyright)
+		return
+	}
+
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
-	log.Println("Starting MLCProxy...")
+	log.Printf("Starting MLCProxy %s...", version.GetVersionInfo())
 
 	// Lade Konfiguration
 	if err := config.LoadConfig(); err != nil {
