@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <title>MLCProxy Statistics</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232c3e50'><path d='M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2v-8h-2v8zm4 0h2V7h-2v10z'/></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>MLCProxy Status</h2>
+            <div class="refresh-info">Auto-Aktualisierung alle <span class="update-interval">5</span>s</div>
+        </div>
+
+        <div class="summary"></div>
+
+        <div class="stats">
+            <div class="section">
+                <h3>Letzte Anfragen</h3>
+                <table class="recent-requests">
+                    <thead>
+                        <tr>
+                            <th>Zeit</th>
+                            <th>Client</th>
+                            <th>Methode</th>
+                            <th>Host</th>
+                            <th>Pfad</th>
+                            <th>Status</th>
+                            <th>Bytes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div class="section">
+                <h3>Top 10 Clients nach Traffic</h3>
+                <table class="client-stats">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Traffic In</th>
+                            <th>Traffic Out</th>
+                            <th>Gesamt Traffic</th>
+                            <th>Anfragen</th>
+                            <th>Letzter Zugriff</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

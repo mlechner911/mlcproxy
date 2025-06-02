@@ -1,9 +1,12 @@
 package stats
 
 import (
+	"encoding/json"
 	"fmt"
+	"mlc_goproxy/internal/config"
 	"net"
 	"net/http"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -46,116 +49,172 @@ func getClientIP(r *http.Request) string {
 	return remoteAddr
 }
 
+type RequestInfo struct {
+	Timestamp time.Time `json:"timestamp"`
+	ClientIP  string    `json:"client_ip"`
+	Method    string    `json:"method"`
+	Host      string    `json:"host"`
+	Path      string    `json:"path"`
+	Status    int       `json:"status"`
+	BytesIn   int64     `json:"bytes_in"`
+	BytesOut  int64     `json:"bytes_out"`
+}
+
 type ClientStats struct {
-	IP                  string    `json:"IP"`
-	BytesIn             uint64    `json:"BytesIn"`
-	BytesOut            uint64    `json:"BytesOut"`
-	BytesInFormatted    string    `json:"BytesInFormatted"`
-	BytesOutFormatted   string    `json:"BytesOutFormatted"`
-	TotalBytesFormatted string    `json:"TotalBytesFormatted"`
-	LastAccess          time.Time `json:"-"`
-	LastAccessFormatted string    `json:"LastAccessFormatted"`
-	RequestCount        uint64    `json:"RequestCount"`
+	IP         string    `json:"ip"`
+	BytesIn    int64     `json:"bytes_in"`
+	BytesOut   int64     `json:"bytes_out"`
+	BytesTotal int64     `json:"bytes_total"`
+	Requests   int       `json:"requests"`
+	LastSeen   time.Time `json:"last_seen"`
 }
 
-type Statistics struct {
-	TotalRequests uint64
-	StartTime     time.Time
-	Clients       map[string]*ClientStats
-	mu            sync.RWMutex
+type Stats struct {
+	mu             sync.RWMutex
+	StartTime      time.Time               `json:"start_time"`
+	TotalRequests  int64                   `json:"total_requests"`
+	TotalBytesIn   int64                   `json:"total_bytes_in"`
+	TotalBytesOut  int64                   `json:"total_bytes_out"`
+	ActiveClients  int                     `json:"active_clients"`
+	ClientStats    map[string]*ClientStats `json:"-"`
+	RecentRequests []RequestInfo           `json:"-"`
 }
 
-var stats = &Statistics{
-	StartTime: time.Now(),
-	Clients:   make(map[string]*ClientStats),
+var globalStats = New()
+
+// GetStats gibt die globale Statistik-Instanz zurück
+func GetStats() *Stats {
+	return globalStats
 }
 
-func LogRequest(req *http.Request) {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
+func New() *Stats {
+	return &Stats{
+		StartTime:      time.Now(),
+		ClientStats:    make(map[string]*ClientStats),
+		RecentRequests: make([]RequestInfo, 0, 100),
+	}
+}
 
-	stats.TotalRequests++
+func LogRequest(req *http.Request, status int, bytesIn, bytesOut int64) {
+	globalStats.mu.Lock()
+	defer globalStats.mu.Unlock()
+
+	globalStats.TotalRequests++
+
 	// Get client IP
 	ip := getClientIP(req)
 
 	// Update or create client stats
-	if _, exists := stats.Clients[ip]; !exists {
-		stats.Clients[ip] = &ClientStats{
+	if _, exists := globalStats.ClientStats[ip]; !exists {
+		globalStats.ClientStats[ip] = &ClientStats{
 			IP: ip,
 		}
 	}
 
-	client := stats.Clients[ip]
-	client.LastAccess = time.Now()
-	client.RequestCount++
+	client := globalStats.ClientStats[ip]
+	client.LastSeen = time.Now()
+	client.Requests++
+
+	// Add to recent requests
+	reqInfo := RequestInfo{
+		Timestamp: time.Now(),
+		ClientIP:  ip,
+		Method:    req.Method,
+		Host:      req.Host,
+		Path:      req.URL.Path,
+		Status:    status,
+		BytesIn:   bytesIn,
+		BytesOut:  bytesOut,
+	}
+
+	if len(globalStats.RecentRequests) >= 100 {
+		globalStats.RecentRequests = append(globalStats.RecentRequests[1:], reqInfo)
+	} else {
+		globalStats.RecentRequests = append(globalStats.RecentRequests, reqInfo)
+	}
+
+	globalStats.updateActiveClients()
+
+	// Update total bytes
+	globalStats.TotalBytesIn += bytesIn
+	globalStats.TotalBytesOut += bytesOut
 }
 
 func LogTransfer(ip string, bytesIn, bytesOut uint64) {
-	stats.mu.Lock()
-	defer stats.mu.Unlock()
+	globalStats.mu.Lock()
+	defer globalStats.mu.Unlock()
 
-	if client, exists := stats.Clients[ip]; exists {
-		client.BytesIn += bytesIn
-		client.BytesOut += bytesOut
+	if client, exists := globalStats.ClientStats[ip]; exists {
+		client.BytesIn += int64(bytesIn)
+		client.BytesOut += int64(bytesOut)
+		client.BytesTotal = client.BytesIn + client.BytesOut
+		globalStats.TotalBytesIn += int64(bytesIn)
+		globalStats.TotalBytesOut += int64(bytesOut)
 	}
 }
 
-func GetCurrentStats() *Statistics {
-	stats.mu.RLock()
-	defer stats.mu.RUnlock()
-
-	// Create a deep copy
-	statsCopy := &Statistics{
-		TotalRequests: stats.TotalRequests,
-		StartTime:     stats.StartTime,
-		Clients:       make(map[string]*ClientStats),
-	}
-
-	for ip, client := range stats.Clients {
-		statsCopy.Clients[ip] = &ClientStats{
-			IP:           client.IP,
-			BytesIn:      client.BytesIn,
-			BytesOut:     client.BytesOut,
-			LastAccess:   client.LastAccess,
-			RequestCount: client.RequestCount,
+func (s *Stats) updateActiveClients() {
+	threshold := time.Now().Add(-5 * time.Minute)
+	active := 0
+	for _, stats := range s.ClientStats {
+		if stats.LastSeen.After(threshold) {
+			active++
 		}
 	}
-
-	return statsCopy
+	s.ActiveClients = active
 }
 
-func GetTopClients(n int) []*ClientStats {
-	stats.mu.RLock()
-	defer stats.mu.RUnlock()
+func (s *Stats) getTopClients(n int) []ClientStats {
 	// Convert map to slice for sorting
-	clients := make([]*ClientStats, 0, len(stats.Clients))
-	for _, client := range stats.Clients {
-		total := client.BytesIn + client.BytesOut
-		clients = append(clients, &ClientStats{
-			IP:                  client.IP,
-			BytesIn:             client.BytesIn,
-			BytesOut:            client.BytesOut,
-			BytesInFormatted:    formatBytes(client.BytesIn),
-			BytesOutFormatted:   formatBytes(client.BytesOut),
-			TotalBytesFormatted: formatBytes(total),
-			LastAccess:          client.LastAccess,
-			LastAccessFormatted: client.LastAccess.Format("15:04:05"),
-			RequestCount:        client.RequestCount,
-		})
+	clients := make([]ClientStats, 0, len(s.ClientStats))
+	for _, c := range s.ClientStats {
+		clients = append(clients, *c)
 	}
 
-	// Sort by total traffic (BytesIn + BytesOut)
+	// Sort by total bytes (descending)
 	sort.Slice(clients, func(i, j int) bool {
-		totalI := clients[i].BytesIn + clients[i].BytesOut
-		totalJ := clients[j].BytesIn + clients[j].BytesOut
-		return totalI > totalJ
+		return clients[i].BytesTotal > clients[j].BytesTotal
 	})
 
-	// Return top N clients
-	if n > len(clients) {
-		n = len(clients)
+	// Return top n clients
+	if len(clients) > n {
+		clients = clients[:n]
 	}
-	return clients[:n]
+	return clients
+}
+
+func (s *Stats) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	w.Header().Set("Content-Type", "application/json")
+
+	response := struct {
+		*Stats
+		RecentRequests []RequestInfo `json:"recent_requests"`
+		ClientStats    []ClientStats `json:"client_stats"`
+	}{
+		Stats:          s,
+		RecentRequests: s.RecentRequests,
+		ClientStats:    s.getTopClients(10),
+	}
+
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+// WriteHTMLStats schreibt die HTML-Statistikseite in den ResponseWriter
+func WriteHTMLStats(w http.ResponseWriter, r *http.Request) error {
+	http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "index.html"))
+	return nil
+}
+
+// ServeStaticFiles registriert die Handler für statische Dateien
+func ServeStaticFiles(mux *http.ServeMux) {
+	fs := http.FileServer(http.Dir(config.Cfg.Paths.StaticDir))
+	mux.Handle(config.Cfg.Paths.StatsPath+"/", http.StripPrefix(config.Cfg.Paths.StatsPath+"/", fs))
 }
 
 func formatBytes(bytes uint64) string {
@@ -175,23 +234,4 @@ func formatBytes(bytes uint64) string {
 	default:
 		return fmt.Sprintf("%d B", bytes)
 	}
-}
-
-func (s *Statistics) String() string {
-	uptime := time.Since(s.StartTime).Round(time.Second)
-	var sb strings.Builder
-
-	sb.WriteString(fmt.Sprintf("Uptime: %v\nTotal Requests: %d\n\n", uptime, s.TotalRequests))
-	sb.WriteString("Top 10 Clients by Traffic:\n")
-	sb.WriteString("------------------------\n")
-
-	for _, client := range GetTopClients(10) {
-		sb.WriteString(fmt.Sprintf("\nIP: %s\n", client.IP))
-		sb.WriteString(fmt.Sprintf("Bytes In: %s\n", formatBytes(client.BytesIn)))
-		sb.WriteString(fmt.Sprintf("Bytes Out: %s\n", formatBytes(client.BytesOut)))
-		sb.WriteString(fmt.Sprintf("Requests: %d\n", client.RequestCount))
-		sb.WriteString(fmt.Sprintf("Last Access: %s\n", client.LastAccess.Format("15:04:05")))
-	}
-
-	return sb.String()
 }

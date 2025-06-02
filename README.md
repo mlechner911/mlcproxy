@@ -1,13 +1,19 @@
 # MLCProxy
 
-Ein HTTP(S) Proxy-Server mit Web-Interface für Statistiken.
+Ein robuster HTTP(S) Proxy-Server mit integrierter Statistik-Anzeige und Traffic-Monitoring.
 
 ## Features
 
-- HTTP und HTTPS Proxy-Unterstützung
-- Web-Interface für Statistiken (http://127.0.0.1:9090)
+- Vollständige HTTP und HTTPS Proxy-Unterstützung mit CONNECT-Handling
+- Integrierte Echtzeit-Statistik-Anzeige über stats.local
+- Live Traffic-Monitoring und -Analyse
 - Konfigurierbarer Proxy-Port (Standard: 3128)
-- Echtzeit-Statistiken
+- Erweiterte Fehlerbehandlung und Statusmeldungen
+- Benutzerfreundliche Web-Oberfläche mit Fehler-Feedback
+- Detaillierte Client-Statistiken und Byte-Tracking
+- Automatische Aktualisierung der Anzeige mit Wiederverbindungsversuchen
+- Chrome DevTools-Kompatibilität
+- Verbesserte Host-Erkennung und Routing-Logik
 
 ## Installation
 
@@ -27,7 +33,9 @@ Oder geben Sie einen benutzerdefinierten Port an:
 ./mlcproxy.exe -port 8080
 ```
 
-Das Web-Interface ist unter http://127.0.0.1:9090 erreichbar.
+Die Statistik-Seite ist auf zwei Arten erreichbar:
+1. http://stats.local (erfordert Proxy-Konfiguration)
+2. http://localhost:3128/stat (direkt)
 
 ## Proxy-Konfiguration
 
@@ -45,4 +53,13 @@ curl -v --proxy http://localhost:3128 http://httpbin.org/get
 HTTPS-Test:
 ```bash
 curl -v --proxy http://localhost:3128 https://httpbin.org/get
+```
+
+Statistik abrufen:
+```bash
+# Direkt
+curl http://localhost:3128/stat
+
+# Über Proxy (stats.local)
+curl --proxy http://localhost:3128 http://stats.local
 ```

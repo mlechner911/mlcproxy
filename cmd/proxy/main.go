@@ -4,41 +4,33 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"mlc_goproxy/internal/gui"
+	"mlc_goproxy/internal/config"
 	"mlc_goproxy/internal/proxy"
 )
 
 func main() {
 	// Command line flags
-	proxyPort := flag.Int("port", 3128, "Port für den Proxy-Server")
+	proxyPort := flag.Int("port", 0, "Port für den Proxy-Server (überschreibt config.ini)")
 	flag.Parse()
 
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Println("Starting MLCProxy...")
 
-	// Create error channel for proxy
-	errChan := make(chan error, 1) // Set the port in the GUI
-	gui.SetPort(*proxyPort)
+	// Lade Konfiguration
+	if err := config.LoadConfig(); err != nil {
+		log.Printf("Warnung: Konnte Konfiguration nicht laden: %v", err)
+		log.Println("Verwende Standard-Einstellungen")
+	}
 
-	// Start proxy server in a goroutine
-	go func() {
-		proxyAddr := fmt.Sprintf(":%d", *proxyPort)
-		log.Printf("Starting proxy server on port %d...", *proxyPort)
-		if err := proxy.Start(proxyAddr); err != nil {
-			log.Printf("Proxy server error: %v", err)
-			errChan <- err
-		}
-	}()
+	// Command line flags überschreiben Konfiguration
+	port := config.Cfg.Server.Port
+	if *proxyPort != 0 {
+		port = *proxyPort
+	}
 
-	// Start GUI in a goroutine
-	go func() {
-		log.Println("Starting GUI...")
-		gui.Start()
-		errChan <- nil
-	}()
-
-	// Wait for error or exit
-	if err := <-errChan; err != nil {
-		log.Fatalf("Application error: %v", err)
+	// Start proxy server
+	proxyAddr := fmt.Sprintf(":%d", port)
+	if err := proxy.Start(proxyAddr); err != nil {
+		log.Fatalf("Proxy server error: %v", err)
 	}
 }

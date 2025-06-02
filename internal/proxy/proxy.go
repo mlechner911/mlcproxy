@@ -1,12 +1,16 @@
 package proxy
 
 import (
+	"fmt"
 	"io"
 	"log"
+	"mlc_goproxy/internal/config"
 	"mlc_goproxy/internal/stats"
 	"net"
 	"net/http"
+	"path/filepath"
 	"strings"
+	"time"
 )
 
 type TrackingReader struct {
@@ -35,44 +39,104 @@ func copyHeader(dst, src http.Header) {
 func Start(addr string) error {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 
-	proxy := &http.Server{
-		Addr: addr,
-		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			log.Printf("Incoming request: %s %s", r.Method, r.URL.String())
+	handler := &ProxyHandler{
+		statsPath: config.Cfg.Paths.StatsPath,
+		apiPath:   config.Cfg.Paths.APIPath,
+		statsHost: "stats.local", // Explizit setzen, unabhängig von der Konfiguration
+	}
 
-			// Log request for statistics
-			stats.LogRequest(r)
-
-			if r.Method == http.MethodConnect {
-				log.Printf("Handling HTTPS request to: %s", r.URL.Host)
-				// HTTPS proxy handling
-				handleHTTPS(w, r)
-			} else {
-				log.Printf("Handling HTTP request to: %s", r.URL.String())
-				// HTTP proxy handling
-				handleHTTP(w, r)
-			}
-		}),
+	server := &http.Server{
+		Addr:    addr,
+		Handler: handler,
 	}
 
 	log.Printf("Starting proxy server on %s", addr)
-	return proxy.ListenAndServe()
+	log.Printf("Statistics available at http://stats.local%s", addr)
+	log.Printf("Configure your proxy to use http://%s", addr)
+	return server.ListenAndServe()
 }
 
-func handleHTTP(w http.ResponseWriter, r *http.Request) {
-	clientIP := getClientIP(r)
+type ProxyHandler struct {
+	statsPath string
+	apiPath   string
+	statsHost string
+}
 
-	// Create tracking reader for request body
+func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Extrahiere den tatsächlichen Host ohne Port
+	host := r.Host
+	if strings.Contains(host, ":") {
+		host = strings.Split(host, ":")[0]
+	}
+
+	// Prüfe auf Statistik-Host
+	if host == h.statsHost {
+		h.handleStats(w, r)
+		return
+	}
+
+	// Logge alle anderen Anfragen
+	log.Printf("Proxy request: %s %s %s", r.Method, r.Host, r.URL.String())
+
+	// HTTPS CONNECT requests
+	if r.Method == http.MethodConnect {
+		h.handleHTTPS(w, r)
+		return
+	}
+
+	// Standard HTTP Proxy Requests
+	h.handleHTTP(w, r)
+}
+
+func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+
+	switch {
+	case path == h.apiPath+"/stats":
+		// API endpoint für Statistiken
+		handleStatsAPI(w, r)
+	case path == "/" || path == "":
+		// Hauptseite
+		handleStatsPage(w, r)
+	case strings.HasPrefix(path, "/styles.css"):
+		// CSS-Datei
+		http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "styles.css"))
+	case strings.HasPrefix(path, "/script.js"):
+		// JavaScript-Datei
+		http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "script.js"))
+	default:
+		// Alle anderen Pfade sind nicht erlaubt
+		http.NotFound(w, r)
+	}
+}
+
+func (h *ProxyHandler) handleHTTP(w http.ResponseWriter, r *http.Request) {
+	// Chrome DevTools check
+	if strings.Contains(r.URL.Path, "/.well-known/appspecific/com.chrome.devtools") {
+		handleDevToolsRequest(w)
+		stats.LogRequest(r, http.StatusOK, 2, 2)
+		return
+	}
+
+	// Standard proxy logic
 	var requestReader TrackingReader
 	if r.Body != nil {
 		requestReader = TrackingReader{r: r.Body}
 		r.Body = io.NopCloser(&requestReader)
 	}
 
+	// Ensure complete URL
+	targetURL := r.URL.String()
+	if !strings.HasPrefix(targetURL, "http://") && !strings.HasPrefix(targetURL, "https://") {
+		targetURL = "http://" + r.Host + targetURL
+	}
+
+	// Create and send request
 	client := &http.Client{}
-	req, err := http.NewRequest(r.Method, r.URL.String(), r.Body)
+	req, err := http.NewRequest(r.Method, targetURL, r.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		stats.LogRequest(r, http.StatusInternalServerError, 0, 0)
 		return
 	}
 
@@ -80,6 +144,7 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	resp, err := client.Do(req)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+		stats.LogRequest(r, http.StatusInternalServerError, 0, 0)
 		return
 	}
 	defer resp.Body.Close()
@@ -87,52 +152,100 @@ func handleHTTP(w http.ResponseWriter, r *http.Request) {
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
 
-	// Create tracking reader for response body
 	responseReader := &TrackingReader{r: resp.Body}
 	_, err = io.Copy(w, responseReader)
 	if err != nil {
 		log.Printf("Error copying response: %v", err)
 	}
 
-	// Log transfer statistics
-	stats.LogTransfer(clientIP, requestReader.bytesRead, responseReader.bytesRead)
+	stats.LogRequest(r, resp.StatusCode, int64(requestReader.bytesRead), int64(responseReader.bytesRead))
 }
 
-func handleHTTPS(w http.ResponseWriter, r *http.Request) {
-	clientIP := getClientIP(r)
+func (h *ProxyHandler) handleHTTPS(w http.ResponseWriter, r *http.Request) {
+	log.Printf("HTTPS CONNECT request to: %s", r.URL.Host)
 
-	destConn, err := net.Dial("tcp", r.Host)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	// Ensure we have a host with port
+	host := r.URL.Host
+	if !strings.Contains(host, ":") {
+		host += ":443"
 	}
-	defer destConn.Close()
 
+	// First hijack the connection
 	hijacker, ok := w.(http.Hijacker)
 	if !ok {
-		http.Error(w, "Hijacking not supported", http.StatusInternalServerError)
+		msg := "Proxy server doesn't support hijacking"
+		log.Print(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 
 	clientConn, _, err := hijacker.Hijack()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		msg := fmt.Sprintf("Hijacking failed: %v", err)
+		log.Print(msg)
+		http.Error(w, msg, http.StatusInternalServerError)
 		return
 	}
 	defer clientConn.Close()
 
-	clientConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+	// Then connect to target
+	targetConn, err := net.DialTimeout("tcp", host, 10*time.Second)
+	if err != nil {
+		log.Printf("Failed to connect to %s: %v", host, err)
+		clientConn.Write([]byte(fmt.Sprintf("HTTP/1.1 504 Gateway Timeout\r\n\r\n")))
+		return
+	}
+	defer targetConn.Close()
 
-	// Create tracking readers for both directions
+	// Send connection established
+	_, err = clientConn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
+	if err != nil {
+		log.Printf("Failed to send 200 response: %v", err)
+		return
+	}
+
+	// Set up tracking
 	clientReader := &TrackingReader{r: clientConn}
-	destReader := &TrackingReader{r: destConn}
+	targetReader := &TrackingReader{r: targetConn}
 
-	// Proxy data in both directions
+	// Create tunnels
+	done := make(chan bool, 2)
+
+	// Client -> Target
 	go func() {
-		io.Copy(destConn, clientReader)
+		io.Copy(targetConn, clientReader)
+		targetConn.(*net.TCPConn).CloseWrite()
+		done <- true
 	}()
-	io.Copy(clientConn, destReader)
 
-	// Log transfer statistics
-	stats.LogTransfer(clientIP, clientReader.bytesRead, destReader.bytesRead)
+	// Target -> Client
+	go func() {
+		io.Copy(clientConn, targetReader)
+		clientConn.(*net.TCPConn).CloseWrite()
+		done <- true
+	}()
+
+	// Wait for either direction to finish
+	<-done
+
+	// Log statistics
+	stats.LogRequest(r, http.StatusOK, int64(clientReader.bytesRead), int64(targetReader.bytesRead))
+}
+
+func handleDevToolsRequest(w http.ResponseWriter) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("{}"))
+}
+
+func handleStatsAPI(w http.ResponseWriter, r *http.Request) {
+	stats.GetStats().ServeHTTP(w, r)
+}
+
+func handleStatsPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html")
+	if err := stats.WriteHTMLStats(w, r); err != nil {
+		log.Printf("Error writing HTML: %v", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
