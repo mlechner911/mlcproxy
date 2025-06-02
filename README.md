@@ -1,65 +1,107 @@
 # MLCProxy
 
-Ein robuster HTTP(S) Proxy-Server mit integrierter Statistik-Anzeige und Traffic-Monitoring.
+A robust HTTP(S) proxy server with integrated statistics display and traffic monitoring.
 
 ## Features
 
-- Vollständige HTTP und HTTPS Proxy-Unterstützung mit CONNECT-Handling
-- Integrierte Echtzeit-Statistik-Anzeige über stats.local
-- Live Traffic-Monitoring und -Analyse
-- Konfigurierbarer Proxy-Port (Standard: 3128)
-- Erweiterte Fehlerbehandlung und Statusmeldungen
-- Benutzerfreundliche Web-Oberfläche mit Fehler-Feedback
-- Detaillierte Client-Statistiken und Byte-Tracking
-- Automatische Aktualisierung der Anzeige mit Wiederverbindungsversuchen
-- Chrome DevTools-Kompatibilität
-- Verbesserte Host-Erkennung und Routing-Logik
+- Complete HTTP and HTTPS proxy support with CONNECT handling
+- Integrated real-time statistics display via stats.local
+- Live traffic monitoring and analysis
+- Configurable proxy port (default: 3128)
+- Advanced error handling and status messages
+- User-friendly web interface with error feedback
+- Detailed client statistics and byte tracking
+- Automatic display updates with reconnection attempts
+- Chrome DevTools compatibility
+- Improved host detection and routing logic
 
 ## Installation
 
-```bash
+```powershell
+# PowerShell
 go build -o mlcproxy.exe cmd/proxy/main.go
 ```
 
-## Verwendung
-
-Starten Sie den Proxy mit dem Standardport (3128):
 ```bash
-./mlcproxy.exe
+# Bash/CMD
+go build -o mlcproxy.exe cmd/proxy/main.go
 ```
 
-Oder geben Sie einen benutzerdefinierten Port an:
-```bash
-./mlcproxy.exe -port 8080
+## Usage
+
+Start the proxy with the default port (3128):
+```powershell
+.\mlcproxy.exe
 ```
 
-Die Statistik-Seite ist auf zwei Arten erreichbar:
-1. http://stats.local (erfordert Proxy-Konfiguration)
-2. http://localhost:3128/stat (direkt)
-
-## Proxy-Konfiguration
-
-Konfigurieren Sie Ihren Browser oder Client mit folgenden Einstellungen:
-- Host: localhost oder 127.0.0.1
-- Port: 3128 (oder Ihr benutzerdefinierter Port)
-
-## Curl-Beispiele
-
-HTTP-Test:
-```bash
-curl -v --proxy http://localhost:3128 http://httpbin.org/get
+Or specify a custom port:
+```powershell
+.\mlcproxy.exe -port 8080
 ```
 
-HTTPS-Test:
-```bash
-curl -v --proxy http://localhost:3128 https://httpbin.org/get
+The statistics page can be accessed in two ways:
+1. http://stats.local (requires proxy configuration)
+2. http://localhost:3128/stat (direct)
+
+## Proxy Configuration
+
+Configure your browser or client with the following settings:
+- Host: localhost or 127.0.0.1
+- Port: 3128 (or your custom port)
+
+## Curl Examples
+
+HTTP test:
+```powershell
+# PowerShell
+curl.exe -v --proxy http://localhost:3128 http://httpbin.org/get
+
+# Alternative using Invoke-WebRequest
+Invoke-WebRequest -Proxy "http://localhost:3128" -Uri "http://httpbin.org/get" -Verbose
 ```
 
-Statistik abrufen:
-```bash
-# Direkt
-curl http://localhost:3128/stat
+HTTPS test:
+```powershell
+# PowerShell
+curl.exe -v --proxy http://localhost:3128 https://httpbin.org/get
 
-# Über Proxy (stats.local)
-curl --proxy http://localhost:3128 http://stats.local
+# Alternative using Invoke-WebRequest
+Invoke-WebRequest -Proxy "http://localhost:3128" -Uri "https://httpbin.org/get" -Verbose
 ```
+
+Get statistics:
+```powershell
+# PowerShell - Direct
+curl.exe http://localhost:3128/stat
+# or
+Invoke-WebRequest -Uri "http://localhost:3128/stat"
+
+# PowerShell - Via Proxy (stats.local)
+curl.exe --proxy http://localhost:3128 http://stats.local
+# or
+Invoke-WebRequest -Proxy "http://localhost:3128" -Uri "http://stats.local"
+```
+
+### Note for PowerShell Users
+In PowerShell, commands are chained using `;` instead of `&&`. Example:
+```powershell
+go build -o mlcproxy.exe cmd/proxy/main.go; .\mlcproxy.exe
+```
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- Thanks to all contributors
+- Icons from [Material Design Icons](https://material.io/icons/)
+- Built with Go and modern web technologies
+
+## Author
+
+- **Michael Lechner** - *Initial work* - [MLCProxy](https://github.com/yourusername/mlcproxy)
+
+## Languages
+
+- [Deutsche Version (German Version)](README.de.md)

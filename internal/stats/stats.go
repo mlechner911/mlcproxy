@@ -1,3 +1,10 @@
+/*
+Copyright (c) 2025 Michael Lechner
+
+This software is released under the MIT License.
+See the LICENSE file for further details.
+*/
+
 package stats
 
 import (

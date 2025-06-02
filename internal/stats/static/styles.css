@@ -1,12 +1,40 @@
+/**
+ * Copyright (c) 2025 Michael Lechner
+ * This software is released under the MIT License.
+ * See the LICENSE file for further details.
+ */
+
 :root {
     --primary-color: #2c3e50;
     --secondary-color: #34495e;
     --accent-color: #3498db;
     --text-color: #2c3e50;
     --background-color: #ecf0f1;
+    --card-background: #ffffff;
+    --border-color: #ddd;
+    --hover-color: #f1f4f7;
+    --even-row-color: #f8f9fa;
     --success-color: #27ae60;
     --warning-color: #f39c12;
     --error-color: #e74c3c;
+    --shadow-color: rgba(0,0,0,0.1);
+    --error-background: #fff3f3;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --primary-color: #3498db;
+        --secondary-color: #7f8c8d;
+        --accent-color: #2ecc71;
+        --text-color: #ecf0f1;
+        --background-color: #1a1a1a;
+        --card-background: #2c3e50;
+        --border-color: #34495e;
+        --hover-color: #34495e;
+        --even-row-color: #2c3e50;
+        --shadow-color: rgba(0,0,0,0.3);
+        --error-background: #2c1515;
+    }
 }
 
 body {
@@ -37,7 +65,7 @@ body {
 }
 
 .section {
-    background: white;
+    background: var(--card-background);
     border-radius: 8px;
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -63,20 +91,20 @@ table {
 th, td {
     padding: 0.75rem;
     text-align: left;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border-color);
 }
 
 th {
     background-color: var(--primary-color);
-    color: white;
+    color: var(--card-background);
 }
 
 tr:nth-child(even) {
-    background-color: #f8f9fa;
+    background-color: var(--even-row-color);
 }
 
 tr:hover {
-    background-color: #f1f4f7;
+    background-color: var(--hover-color);
 }
 
 .summary {
@@ -87,10 +115,10 @@ tr:hover {
 }
 
 .stat-card {
-    background: white;
+    background: var(--card-background);
     padding: 1rem;
     border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .stat-card h4 {
@@ -101,17 +129,17 @@ tr:hover {
 .stat-card p {
     margin: 0;
     font-size: 1.25rem;
-    color: var(--primary-color);
+    color: var(--text-color);
     font-weight: bold;
 }
 
 .error-card {
-    background: #fff3f3;
+    background: var(--error-background);
     border: 1px solid var(--error-color);
     border-radius: 8px;
     padding: 1rem;
     margin-bottom: 1rem;
-    box-shadow: 0 2px 4px rgba(231, 76, 60, 0.1);
+    box-shadow: 0 2px 4px var(--shadow-color);
 }
 
 .error-card h4 {
@@ -123,4 +151,42 @@ tr:hover {
     margin: 0;
     color: var(--text-color);
     font-size: 1rem;
+}
+
+.footer {
+    margin-top: 2rem;
+    padding: 1rem 0;
+    text-align: center;
+    border-top: 1px solid var(--border-color);
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+}
+
+.footer p {
+    margin: 0;
+}
+
+.footer a {
+    color: var(--accent-color);
+    text-decoration: none;
+    transition: color 0.2s;
+}
+
+.footer a:hover {
+    color: var(--primary-color);
+    text-decoration: underline;
+}
+
+.copyright {
+    font-weight: 500;
+}
+
+@media (prefers-color-scheme: dark) {
+    .footer {
+        border-top-color: var(--border-color);
+    }
+
+    .footer a:hover {
+        color: var(--accent-color);
+    }
 }

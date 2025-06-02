@@ -1,3 +1,10 @@
+/*
+Copyright (c) 2025 Michael Lechner
+
+This software is released under the MIT License.
+See the LICENSE file for further details.
+*/
+
 package proxy
 
 import (
@@ -8,6 +15,7 @@ import (
 	"mlc_goproxy/internal/stats"
 	"net"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -88,6 +96,25 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.handleHTTP(w, r)
 }
 
+func (h *ProxyHandler) getPreferredLanguage(r *http.Request) string {
+	// Accept-Language Header auslesen
+	acceptLang := r.Header.Get("Accept-Language")
+	if acceptLang == "" {
+		return "de" // Fallback auf Deutsch
+	}
+
+	// Sprache aus dem Header extrahieren (z.B. "en-US,en;q=0.9" -> "en")
+	parts := strings.Split(acceptLang, ",")
+	if len(parts) > 0 {
+		langParts := strings.Split(parts[0], "-")
+		if len(langParts) > 0 {
+			return strings.ToLower(langParts[0])
+		}
+	}
+
+	return "de" // Fallback auf Deutsch
+}
+
 func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 
@@ -96,8 +123,17 @@ func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 		// API endpoint für Statistiken
 		handleStatsAPI(w, r)
 	case path == "/" || path == "":
-		// Hauptseite
-		handleStatsPage(w, r)
+		// Hauptseite mit Sprachauswahl
+		lang := h.getPreferredLanguage(r)
+
+		// Versuche zuerst die sprachspezifische Datei
+		htmlFile := filepath.Join(config.Cfg.Paths.StaticDir, fmt.Sprintf("index.%s.html", lang))
+		if _, err := os.Stat(htmlFile); os.IsNotExist(err) {
+			// Fallback auf Standard-Datei
+			htmlFile = filepath.Join(config.Cfg.Paths.StaticDir, "index.html")
+		}
+
+		http.ServeFile(w, r, htmlFile)
 	case strings.HasPrefix(path, "/styles.css"):
 		// CSS-Datei
 		http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "styles.css"))
