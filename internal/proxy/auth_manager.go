@@ -8,6 +8,7 @@ package proxy
 
 import (
 	"encoding/base64"
+	"log"
 	"mlc_goproxy/internal/config"
 	"net"
 	"net/http"
@@ -63,19 +64,32 @@ func (am *AuthManager) IsIPAllowed(ipStr string) bool {
 		return true
 	}
 
-	// Entferne Port-Nummer wenn vorhanden
-	if strings.Contains(ipStr, ":") {
-		ipStr = strings.Split(ipStr, ":")[0]
+	// Extrahiere IP-Adresse aus Host:Port Format
+	host := ipStr
+	if strings.Count(ipStr, ":") == 1 {
+		// IPv4 mit Port
+		host, _, _ = net.SplitHostPort(ipStr)
+	} else if strings.HasPrefix(ipStr, "[") && strings.Contains(ipStr, "]:") {
+		// IPv6 mit Port: [2001:db8::1]:8080
+		host, _, _ = net.SplitHostPort(ipStr)
+		host = strings.Trim(host, "[]")
 	}
 
-	clientIP := net.ParseIP(ipStr)
+	clientIP := net.ParseIP(host)
 	if clientIP == nil {
+		log.Printf("Warnung: Konnte IP-Adresse nicht parsen: %s", host)
 		return false
+	}
+
+	// Konvertiere zu 4-byte IPv4 wenn möglich
+	if ip4 := clientIP.To4(); ip4 != nil {
+		clientIP = ip4
 	}
 
 	for _, network := range config.Cfg.Security.AllowedNetworks {
 		_, ipNet, err := net.ParseCIDR(network)
 		if err != nil {
+			log.Printf("Warnung: Ungültiges Netzwerk in Konfiguration: %s", network)
 			continue
 		}
 		if ipNet.Contains(clientIP) {
@@ -83,5 +97,7 @@ func (am *AuthManager) IsIPAllowed(ipStr string) bool {
 		}
 	}
 
+	log.Printf("Zugriff verweigert für IP %s - nicht in erlaubten Netzwerken: %v",
+		host, config.Cfg.Security.AllowedNetworks)
 	return false
 }
