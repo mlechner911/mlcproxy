@@ -131,10 +131,66 @@ The statistics page can be accessed in two ways:
 
 ## Proxy Configuration
 
-Configure your browser or client with the following settings:
+### Windows
 
-- Host: localhost or 127.0.0.1
-- Port: 3128 (or your custom port)
+1. System-wide configuration:
+   - Open Windows Settings > Network & Internet > Proxy
+   - Enable "Manual proxy setup"
+   - Set "Proxy IP address" to: `127.0.0.1`
+   - Set "Port" to: `3128`
+   - Optional: Add `stats.local` to "Don't use proxy server for these addresses"
+
+2. Command line configuration:
+   ```powershell
+   # Set proxy
+   netsh winhttp set proxy proxy-server="127.0.0.1:3128"
+
+   # Remove proxy
+   netsh winhttp reset proxy
+   ```
+
+### macOS
+
+1. System-wide configuration:
+   - Open System Preferences > Network > Advanced > Proxies
+   - Check "Web Proxy (HTTP)" and "Secure Web Proxy (HTTPS)"
+   - Set "Web Proxy Server" to: `127.0.0.1`
+   - Set "Port" to: `3128`
+   - Optional: Add `stats.local` to "Bypass proxy settings for these Hosts & Domains"
+
+2. Command line configuration:
+   ```bash
+   # Set proxy
+   export http_proxy="http://127.0.0.1:3128"
+   export https_proxy="http://127.0.0.1:3128"
+
+   # Remove proxy
+   unset http_proxy https_proxy
+   ```
+
+### Browser Extensions
+
+For easy proxy switching, we recommend:
+
+1. **Proxy Switcher and Manager** (Chrome/Edge/Opera)
+   - [Chrome Web Store Link](https://chrome.google.com/webstore/detail/proxy-switcher-and-manager/onnfghpihccifgojkpnnncpagjcdbjod)
+   - Features:
+     - Quick proxy switching
+     - Multiple proxy profiles
+     - Auto-switch based on rules
+     - System proxy integration
+
+2. **FoxyProxy** (Firefox)
+   - [Firefox Add-ons Link](https://addons.mozilla.org/en-US/firefox/addon/foxyproxy-standard/)
+   - Features:
+     - Pattern-based proxy switching
+     - Multiple proxy configurations
+     - Import/export settings
+
+Configure these extensions with:
+- Proxy Host: `127.0.0.1` or `localhost`
+- Port: `3128`
+- Type: HTTP/HTTPS Proxy
 
 ## Curl Examples
 

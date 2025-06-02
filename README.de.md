@@ -172,10 +172,69 @@ Die Statistik-Seite ist auf zwei Arten erreichbar:
 
 ## Proxy-Konfiguration
 
-Konfigurieren Sie Ihren Browser oder Client mit folgenden Einstellungen:
+### Windows
 
-- Host: localhost oder 127.0.0.1
-- Port: 3128 (oder Ihr benutzerdefinierter Port)
+1. Systemweite Konfiguration:
+   - Öffnen Sie Windows-Einstellungen > Netzwerk & Internet > Proxy
+   - Aktivieren Sie "Manuelle Proxy-Einrichtung"
+   - Setzen Sie "Proxy-IP-Adresse" auf: `127.0.0.1`
+   - Setzen Sie "Port" auf: `3128`
+   - Optional: Fügen Sie `stats.local` zu "Proxy nicht für folgende Adressen verwenden" hinzu
+
+2. Konfiguration über die Kommandozeile:
+
+   ```powershell
+   # Proxy setzen
+   netsh winhttp set proxy proxy-server="127.0.0.1:3128"
+
+   # Proxy entfernen
+   netsh winhttp reset proxy
+   ```
+
+### macOS
+
+1. Systemweite Konfiguration:
+   - Öffnen Sie Systemeinstellungen > Netzwerk > Erweitert > Proxies
+   - Aktivieren Sie "Web Proxy (HTTP)" und "Sicherer Web Proxy (HTTPS)"
+   - Setzen Sie "Web Proxy Server" auf: `127.0.0.1`
+   - Setzen Sie "Port" auf: `3128`
+   - Optional: Fügen Sie `stats.local` zu "Proxy-Einstellungen umgehen für diese Hosts & Domains" hinzu
+
+2. Konfiguration über das Terminal:
+
+   ```bash
+   # Proxy setzen
+   export http_proxy="http://127.0.0.1:3128"
+   export https_proxy="http://127.0.0.1:3128"
+
+   # Proxy entfernen
+   unset http_proxy https_proxy
+   ```
+
+### Browser-Erweiterungen
+
+Für einfaches Umschalten des Proxys empfehlen wir:
+
+1. **Proxy Switcher and Manager** (Chrome/Edge/Opera)
+   - [Chrome Web Store Link](https://chrome.google.com/webstore/detail/proxy-switcher-and-manager/onnfghpihccifgojkpnnncpagjcdbjod)
+   - Funktionen:
+     - Schnelles Proxy-Umschalten
+     - Mehrere Proxy-Profile
+     - Automatisches Umschalten basierend auf Regeln
+     - Integration mit System-Proxy
+
+2. **FoxyProxy** (Firefox)
+   - [Firefox Add-ons Link](https://addons.mozilla.org/de/firefox/addon/foxyproxy-standard/)
+   - Funktionen:
+     - Musterbasiertes Proxy-Umschalten
+     - Mehrere Proxy-Konfigurationen
+     - Import/Export von Einstellungen
+
+Konfigurieren Sie diese Erweiterungen mit:
+
+- Proxy Host: `127.0.0.1` oder `localhost`
+- Port: `3128`
+- Typ: HTTP/HTTPS Proxy
 
 ## Curl-Beispiele
 
