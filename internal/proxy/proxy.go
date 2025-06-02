@@ -35,7 +35,36 @@ func (t *TrackingReader) Read(p []byte) (n int, err error) {
 
 // getClientIP extracts the client's IP address from the request
 func getClientIP(r *http.Request) string {
-	return strings.Split(r.RemoteAddr, ":")[0]
+	// Check X-Forwarded-For header first
+	forwardedFor := r.Header.Get("X-Forwarded-For")
+	if forwardedFor != "" {
+		// Take first IP from list
+		ips := strings.Split(forwardedFor, ",")
+		return strings.TrimSpace(ips[0])
+	}
+
+	// Fallback to RemoteAddr
+	remoteAddr := r.RemoteAddr
+
+	// Handle IPv4 with port
+	if strings.Count(remoteAddr, ":") == 1 {
+		host, _, err := net.SplitHostPort(remoteAddr)
+		if err == nil {
+			return host
+		}
+	}
+
+	// Handle IPv6 with port
+	if strings.HasPrefix(remoteAddr, "[") {
+		host, _, err := net.SplitHostPort(remoteAddr)
+		if err == nil {
+			return strings.Trim(host, "[]")
+		}
+		// IPv6 without port
+		return strings.Trim(remoteAddr, "[]")
+	}
+
+	return remoteAddr
 }
 
 // copyHeader copies HTTP headers from src to dst
@@ -89,14 +118,19 @@ type ProxyHandler struct {
 }
 
 // ServeHTTP handles all incoming HTTP requests
-func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // Direct request to stats path
+	if strings.HasPrefix(r.URL.Path, h.statsPath) {
+		h.handleStats(w, r)
+		return
+	}
+
 	// Extract actual host without port
 	host := r.Host
 	if strings.Contains(host, ":") {
 		host = strings.Split(host, ":")[0]
 	}
 
-	// Check for stats host (always allowed)
+	// Check for stats host (always allowed) - legacy support
 	if host == h.statsHost {
 		h.handleStats(w, r)
 		return
@@ -109,7 +143,7 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.authManager.IsIPAllowed(clientIP) {
 		log.Printf("Access denied for IP %s - not in allowed networks (%v)",
 			clientIP, config.Cfg.Security.AllowedNetworks)
-		http.Error(w, "Access denied - IP not in allowed networks", http.StatusForbidden)
+		http.Error(w, fmt.Sprintf("Access denied - IP %s not in allowed networks (%s)", clientIP, strings.Join(config.Cfg.Security.AllowedNetworks, ", ")), http.StatusForbidden)
 		stats.LogRequest(r, http.StatusForbidden, 0, 0)
 		return
 	}
@@ -157,12 +191,11 @@ func (h *ProxyHandler) getPreferredLanguage(r *http.Request) string {
 // handleStats serves the statistics interface and API
 func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
-
 	switch {
 	case path == h.apiPath+"/stats":
 		// API endpoint for statistics
 		handleStatsAPI(w, r)
-	case path == "/" || path == "":
+	case path == h.statsPath || path == "/" || path == "":
 		// Main page with language selection
 		lang := h.getPreferredLanguage(r)
 
