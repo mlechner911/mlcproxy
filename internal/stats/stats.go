@@ -122,6 +122,11 @@ func LogRequest(req *http.Request, status int, bytesIn, bytesOut int64) {
 	client.LastSeen = time.Now()
 	client.Requests++
 
+	// Update bytes for client
+	client.BytesIn += bytesIn
+	client.BytesOut += bytesOut
+	client.BytesTotal = client.BytesIn + client.BytesOut
+
 	// Add to recent requests
 	reqInfo := RequestInfo{
 		Timestamp: time.Now(),
@@ -155,9 +160,21 @@ func LogTransfer(ip string, bytesIn, bytesOut uint64) {
 		client.BytesIn += int64(bytesIn)
 		client.BytesOut += int64(bytesOut)
 		client.BytesTotal = client.BytesIn + client.BytesOut
-		globalStats.TotalBytesIn += int64(bytesIn)
-		globalStats.TotalBytesOut += int64(bytesOut)
+		client.LastSeen = time.Now() // Aktualisiere auch den Zeitstempel
+	} else {
+		// Falls der Client noch nicht existiert, erstelle einen neuen Eintrag
+		globalStats.ClientStats[ip] = &ClientStats{
+			IP:         ip,
+			BytesIn:    int64(bytesIn),
+			BytesOut:   int64(bytesOut),
+			BytesTotal: int64(bytesIn + bytesOut),
+			LastSeen:   time.Now(),
+		}
 	}
+
+	// Update global totals
+	globalStats.TotalBytesIn += int64(bytesIn)
+	globalStats.TotalBytesOut += int64(bytesOut)
 }
 
 func (s *Stats) updateActiveClients() {

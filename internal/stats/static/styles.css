@@ -19,6 +19,7 @@
     --error-color: #e74c3c;
     --shadow-color: rgba(0,0,0,0.1);
     --error-background: #fff3f3;
+    --primary-color-alpha: rgba(44, 62, 80, 0.2);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -32,8 +33,12 @@
         --border-color: #34495e;
         --hover-color: #34495e;
         --even-row-color: #2c3e50;
+        --success-color: #27ae60;
+        --warning-color: #f39c12;
+        --error-color: #e74c3c;
         --shadow-color: rgba(0,0,0,0.3);
         --error-background: #2c1515;
+        --primary-color-alpha: rgba(52, 152, 219, 0.2);
     }
 }
 
@@ -181,6 +186,174 @@ tr:hover {
     font-weight: 500;
 }
 
+.request-rate {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.request-rate h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+.rate-graph {
+    background: var(--background-color);
+    border-radius: 4px;
+    width: 100%;
+    height: 50px;
+    margin-bottom: 0.5rem;
+}
+
+.rate-line {
+    fill: none;
+    stroke: var(--accent-color);
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.rate-line.traffic-in {
+    stroke: var(--success-color);
+}
+
+.rate-line.traffic-out {
+    stroke: var(--warning-color);
+}
+
+.rate-line.clients {
+    stroke: var(--primary-color);
+}
+
+.metric-graph {
+    margin-top: 1rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-color);
+}
+
+.metric-graph h5 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--secondary-color);
+}
+
+.rate-value {
+    font-size: 0.9rem;
+    color: var(--text-color);
+    font-weight: 500;
+}
+
+.trend-indicator {
+    margin-left: 0.5rem;
+    font-weight: bold;
+}
+
+.trend-indicator.up {
+    color: var(--success-color);
+}
+
+.trend-indicator.down {
+    color: var(--warning-color);
+}
+
+.trend-indicator.stable {
+    color: var(--secondary-color);
+}
+
+.metric-stats {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 0.5rem;
+}
+
+.min-max {
+    display: flex;
+    gap: 1rem;
+    color: var(--secondary-color);
+    font-size: 0.8rem;
+}
+
+.min-max .min,
+.min-max .max {
+    white-space: nowrap;
+}
+
+.header-controls {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+}
+
+.theme-switcher {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.theme-switcher select {
+    background: var(--card-background);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+}
+
+.theme-switcher select:hover {
+    border-color: var(--primary-color);
+}
+
+.theme-switcher select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px var(--primary-color-alpha);
+}
+
+.recent-requests small {
+    color: var(--secondary-color);
+    font-size: 0.8rem;
+    font-weight: normal;
+}
+
+/* Light Theme */
+[data-theme="light"] {
+    --primary-color: #2c3e50;
+    --secondary-color: #34495e;
+    --accent-color: #3498db;
+    --text-color: #2c3e50;
+    --background-color: #ecf0f1;
+    --card-background: #ffffff;
+    --border-color: #ddd;
+    --hover-color: #f1f4f7;
+    --even-row-color: #f8f9fa;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --error-color: #e74c3c;
+    --shadow-color: rgba(0,0,0,0.1);
+    --error-background: #fff3f3;
+    --primary-color-alpha: rgba(44, 62, 80, 0.2);
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --primary-color: #3498db;
+    --secondary-color: #7f8c8d;
+    --accent-color: #2ecc71;
+    --text-color: #ecf0f1;
+    --background-color: #1a1a1a;
+    --card-background: #2c3e50;
+    --border-color: #34495e;
+    --hover-color: #34495e;
+    --even-row-color: #2c3e50;
+    --success-color: #27ae60;
+    --warning-color: #f39c12;
+    --error-color: #e74c3c;
+    --shadow-color: rgba(0,0,0,0.3);
+    --error-background: #2c1515;
+    --primary-color-alpha: rgba(52, 152, 219, 0.2);
+}
+
 @media (prefers-color-scheme: dark) {
     .footer {
         border-top-color: var(--border-color);
@@ -188,5 +361,9 @@ tr:hover {
 
     .footer a:hover {
         color: var(--accent-color);
+    }
+
+    .rate-graph {
+        background: var(--secondary-color);
     }
 }

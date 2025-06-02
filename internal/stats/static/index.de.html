@@ -23,7 +23,17 @@ See the LICENSE file for further details.
                     <path d='M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2v-8h-2v8zm4 0h2V7h-2v10z' />
                 </svg>
                 MLCProxy Status</h2>
-            <small class="refresh-info">Auto-Aktualisierung alle <span class="update-interval">5</span>s</small>
+            <div class="header-controls">
+                <div class="theme-switcher">
+                    <label for="theme-select">Theme:</label>
+                    <select id="theme-select">
+                        <option value="auto">Auto</option>
+                        <option value="light">Hell</option>
+                        <option value="dark">Dunkel</option>
+                    </select>
+                </div>
+                <small class="refresh-info">Auto-Aktualisierung alle <span class="update-interval">5</span>s</small>
+            </div>
         </div>
 
         <!-- Hier nur das leere summary-div -->
@@ -43,6 +53,19 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Gesamtanfragen</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Anfragen/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0/s</span>
+                            <span class="max">Max: 0/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -50,6 +73,19 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Traffic In</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Bytes/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line traffic-in" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0 B/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0 B/s</span>
+                            <span class="max">Max: 0 B/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -57,6 +93,19 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Traffic Out</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Bytes/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line traffic-out" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0 B/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0 B/s</span>
+                            <span class="max">Max: 0 B/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -64,6 +113,20 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Aktive Clients</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Trend</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line clients" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0</span>
+                        <span class="trend-indicator">→</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0</span>
+                            <span class="max">Max: 0</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -88,14 +151,14 @@ See the LICENSE file for further details.
                 <h3>Letzte Anfragen</h3>
                 <table class="recent-requests">
                     <thead>
-                        <tr>
-                            <th>Zeit</th>
+                        <tr>                            <th>Zeit</th>
                             <th>Client</th>
                             <th>Methode</th>
                             <th>Host</th>
                             <th>Pfad</th>
                             <th>Status</th>
                             <th>Bytes</th>
+                            <th>Anzahl</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
