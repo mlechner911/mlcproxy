@@ -65,11 +65,10 @@ func LoadConfig() error {
 	// Server-Sektion
 	Cfg.Server.Port = cfg.Section("server").Key("port").MustInt(3128)
 
-	// Paths-Sektion
-	pathsSec := cfg.Section("paths")
-	Cfg.Paths.StaticDir = pathsSec.Key("static_dir").MustString("internal/stats/static")
-	Cfg.Paths.StatsPath = pathsSec.Key("stats_path").MustString("/stat")
-	Cfg.Paths.APIPath = pathsSec.Key("api_path").MustString("/api")
+	// Paths-Sektion mit absoluten Pfaden
+	Cfg.Paths.StaticDir = filepath.Join(basePath, cfg.Section("paths").Key("static_dir").MustString("static"))
+	Cfg.Paths.StatsPath = cfg.Section("paths").Key("stats_path").MustString("/stat")
+	Cfg.Paths.APIPath = cfg.Section("paths").Key("api_path").MustString("/api")
 
 	// Features-Sektion
 	Cfg.Features.StatsHost = cfg.Section("features").Key("stats_host").MustString("stats.local")

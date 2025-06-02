@@ -6,7 +6,7 @@
 
 // Update interval for refreshing statistics (in milliseconds)
 const UPDATE_INTERVAL = 5000;
-const MAX_POINTS = 30; // 2.5 minutes of history
+const MAX_POINTS = 60; // 5 minutes of history
 
 // Statistics tracking
 let lastRequests = 0;
@@ -335,6 +335,37 @@ function updateSummary(stats) {
 }
 
 /**
+ * Groups identical requests and adds a counter
+ * @param {Array} requests - Array of request objects
+ * @returns {Array} Grouped requests with count
+ */
+function groupIdenticalRequests(requests) {
+    const grouped = new Map();
+    
+    requests.forEach(req => {
+        const key = `${req.method}|${req.host}|${req.path}|${req.status}`;
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                ...req,
+                count: 1,
+                bytes_total: req.bytes_in + req.bytes_out
+            });
+        } else {
+            const existing = grouped.get(key);
+            existing.count++;
+            existing.bytes_total += (req.bytes_in + req.bytes_out);
+            // Update timestamp if newer
+            if (req.timestamp > existing.timestamp) {
+                existing.timestamp = req.timestamp;
+            }
+        }
+    });
+    
+    return Array.from(grouped.values())
+        .sort((a, b) => b.timestamp - a.timestamp);
+}
+
+/**
  * Updates the recent requests table
  * @param {Array} requests - Array of recent request objects
  */
@@ -342,7 +373,9 @@ function updateRecentRequests(requests) {
     const tbody = document.querySelector('.recent-requests tbody');
     if (!tbody) return;
     
-    tbody.innerHTML = requests.map(req => `
+    const groupedRequests = groupIdenticalRequests(requests);
+    
+    tbody.innerHTML = groupedRequests.map(req => `
         <tr>
             <td>${formatDate(req.timestamp)}</td>
             <td>${req.client_ip}</td>
@@ -350,7 +383,7 @@ function updateRecentRequests(requests) {
             <td>${req.host}</td>
             <td>${req.path}</td>
             <td>${req.status}</td>
-            <td>${formatBytes(req.bytes_in + req.bytes_out)}</td>
+            <td>${formatBytes(req.bytes_total)}</td>            <td>${req.count > 1 ? `<small>${req.count}×</small>` : ''}</td>
         </tr>
     `).join('');
 }
@@ -407,3 +440,60 @@ setInterval(updateStats, UPDATE_INTERVAL);
 
 // Update the displayed refresh interval
 document.querySelector('.update-interval').textContent = UPDATE_INTERVAL / 1000;
+
+/**
+ * Manages theme switching functionality
+ */
+const themeManager = {
+    storageKey: 'preferred-theme',
+    
+    /**
+     * Initializes theme manager
+     */
+    init() {
+        this.select = document.getElementById('theme-select');
+        if (!this.select) return;
+        
+        // Load saved preference
+        const savedTheme = localStorage.getItem(this.storageKey) || 'auto';
+        this.select.value = savedTheme;
+        
+        // Set initial theme
+        this.setTheme(savedTheme);
+        
+        // Listen for changes
+        this.select.addEventListener('change', () => {
+            const theme = this.select.value;
+            this.setTheme(theme);
+            localStorage.setItem(this.storageKey, theme);
+        });
+        
+        // Listen for system theme changes
+        if (window.matchMedia) {
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (this.select.value === 'auto') {
+                    this.setTheme('auto');
+                }
+            });
+        }
+    },
+    
+    /**
+     * Sets the theme
+     * @param {string} theme - Theme to set ('auto', 'light', or 'dark')
+     */
+    setTheme(theme) {
+        if (theme === 'auto') {
+            // Check system preference
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+        } else {
+            document.documentElement.setAttribute('data-theme', theme);
+        }
+    }
+};
+
+// Initialize theme manager after DOM is loaded
+document.addEventListener('DOMContentLoaded', () => {
+    themeManager.init();
+});

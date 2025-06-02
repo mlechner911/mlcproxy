@@ -1,0 +1,111 @@
+<!--
+Copyright (c) 2025 Michael Lechner
+This software is released under the MIT License.
+See the LICENSE file for further details.
+-->
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <title>MLCProxy Statistics</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%232c3e50'><path d='M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2v-8h-2v8zm4 0h2V7h-2v10z'/></svg>">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <div class="container">
+
+
+        <div class="header">
+            <h2> <svg style="width:1rem" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'>
+                    <path d='M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2v-8h-2v8zm4 0h2V7h-2v10z' />
+                </svg>
+                MLCProxy Status</h2>
+            <small class="refresh-info">Auto-Aktualisierung alle <span class="update-interval">5</span>s</small>
+        </div>
+
+        <!-- Hier nur das leere summary-div -->
+        <div class="summary"></div>
+
+        <!-- Templates außerhalb des summary-div -->
+        <!-- Error Card Template -->
+        <template id="error-template">
+            <div class="error-card">
+                <h4>Fehler</h4>
+                <p data-placeholder="message"></p>
+            </div>
+        </template>
+
+        <!-- Stat Card Templates -->
+        <template id="total-requests-template">
+            <div class="stat-card">
+                <h4>Gesamtanfragen</h4>
+                <p data-placeholder="value"></p>
+            </div>
+        </template>
+
+        <template id="traffic-in-template">
+            <div class="stat-card">
+                <h4>Traffic In</h4>
+                <p data-placeholder="value"></p>
+            </div>
+        </template>
+
+        <template id="traffic-out-template">
+            <div class="stat-card">
+                <h4>Traffic Out</h4>
+                <p data-placeholder="value"></p>
+            </div>
+        </template>
+
+        <template id="active-clients-template">
+            <div class="stat-card">
+                <h4>Aktive Clients</h4>
+                <p data-placeholder="value"></p>
+            </div>
+        </template>
+
+        <div class="stats">
+            <div class="section">
+                <h3>Top 10 Clients nach Traffic</h3>
+                <table class="client-stats">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>Traffic In</th>
+                            <th>Traffic Out</th>
+                            <th>Gesamt Traffic</th>
+                            <th>Anfragen</th>
+                            <th>Letzter Zugriff</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="section">
+                <h3>Letzte Anfragen</h3>
+                <table class="recent-requests">
+                    <thead>
+                        <tr>
+                            <th>Zeit</th>
+                            <th>Client</th>
+                            <th>Methode</th>
+                            <th>Host</th>
+                            <th>Pfad</th>
+                            <th>Status</th>
+                            <th>Bytes</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+
+</html>

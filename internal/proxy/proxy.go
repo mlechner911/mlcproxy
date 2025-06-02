@@ -117,6 +117,8 @@ func (h *ProxyHandler) getPreferredLanguage(r *http.Request) string {
 
 func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
+	log.Printf("Handling stats request: %s", path)
+	log.Printf("Static dir configured as: %s", config.Cfg.Paths.StaticDir)
 
 	switch {
 	case path == h.apiPath+"/stats":
@@ -128,18 +130,44 @@ func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
 
 		// Versuche zuerst die sprachspezifische Datei
 		htmlFile := filepath.Join(config.Cfg.Paths.StaticDir, fmt.Sprintf("index.%s.html", lang))
+		log.Printf("Trying to serve HTML file: %s", htmlFile)
+
 		if _, err := os.Stat(htmlFile); os.IsNotExist(err) {
 			// Fallback auf Standard-Datei
 			htmlFile = filepath.Join(config.Cfg.Paths.StaticDir, "index.html")
+			log.Printf("File not found, falling back to: %s", htmlFile)
 		}
 
+		// Prüfe ob die Datei existiert
+		if _, err := os.Stat(htmlFile); os.IsNotExist(err) {
+			log.Printf("HTML file not found: %s", htmlFile)
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
 		http.ServeFile(w, r, htmlFile)
+
 	case strings.HasPrefix(path, "/styles.css"):
 		// CSS-Datei
-		http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "styles.css"))
+		cssFile := filepath.Join(config.Cfg.Paths.StaticDir, "styles.css")
+		log.Printf("Trying to serve CSS file: %s", cssFile)
+		if _, err := os.Stat(cssFile); os.IsNotExist(err) {
+			log.Printf("CSS file not found: %s", cssFile)
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		http.ServeFile(w, r, cssFile)
+
 	case strings.HasPrefix(path, "/script.js"):
 		// JavaScript-Datei
-		http.ServeFile(w, r, filepath.Join(config.Cfg.Paths.StaticDir, "script.js"))
+		jsFile := filepath.Join(config.Cfg.Paths.StaticDir, "script.js")
+		log.Printf("Trying to serve JS file: %s", jsFile)
+		if _, err := os.Stat(jsFile); os.IsNotExist(err) {
+			log.Printf("JavaScript file not found: %s", jsFile)
+			http.Error(w, "File not found", http.StatusNotFound)
+			return
+		}
+		http.ServeFile(w, r, jsFile)
+
 	default:
 		// Alle anderen Pfade sind nicht erlaubt
 		http.NotFound(w, r)
