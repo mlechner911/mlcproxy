@@ -192,7 +192,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-- **Michael Lechner** - *Initial work* - [MLCProxy](https://github.com/yourusername/mlcproxy)
+- **Michael Lechner** - *Initial work* - [MLCProxy](https://github.com/mlechner911/mlcproxy)
 
 ## Languages
 
