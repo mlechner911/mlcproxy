@@ -1,6 +1,7 @@
 package gui
 
 import (
+	"encoding/json"
 	"fmt"
 	"html/template"
 	"log"
@@ -10,8 +11,9 @@ import (
 )
 
 type guiData struct {
-	Stats string
-	Port  int
+	Stats    template.HTML
+	Port     int
+	TopStats []*stats.ClientStats
 }
 
 const htmlTemplate = `
@@ -43,8 +45,32 @@ const htmlTemplate = `
             margin: 15px 0;
         }
         .stats {
-            font-family: monospace;
             margin-top: 20px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            background: white;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .summary {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #e8f4f8;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -56,8 +82,35 @@ const htmlTemplate = `
             <h3>Proxy-Konfiguration:</h3>
             <p>Host: localhost<br>Port: {{.Port}}</p>
         </div>
-        <div class="stats">
+        <div class="summary">
             {{.Stats}}
+        </div>
+        <div class="stats">
+            <h3>Top 10 Clients nach Traffic</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP</th>
+                        <th>Traffic In</th>
+                        <th>Traffic Out</th>
+                        <th>Gesamt Traffic</th>
+                        <th>Anfragen</th>
+                        <th>Letzter Zugriff</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {{range .TopStats}}
+                    <tr>
+                        <td>{{.IP}}</td>
+                        <td>{{.BytesInFormatted}}</td>
+                        <td>{{.BytesOutFormatted}}</td>
+                        <td>{{.TotalBytesFormatted}}</td>
+                        <td>{{.RequestCount}}</td>
+                        <td>{{.LastAccessFormatted}}</td>
+                    </tr>
+                    {{end}}
+                </tbody>
+            </table>
         </div>
     </div>
     <script>
@@ -65,13 +118,27 @@ const htmlTemplate = `
             fetch('/stats')
                 .then(response => response.text())
                 .then(stats => {
-                    document.querySelector('.stats').textContent = stats;
+                    document.querySelector('.summary').innerHTML = stats;
+                });
+            fetch('/topstats')
+                .then(response => response.json())
+                .then(stats => {
+                    const tbody = document.querySelector('tbody');
+                    tbody.innerHTML = stats.map(client => ` + "`" + `
+                        <tr>
+                            <td>${client.IP}</td>
+                            <td>${client.BytesInFormatted}</td>
+                            <td>${client.BytesOutFormatted}</td>
+                            <td>${client.TotalBytesFormatted}</td>
+                            <td>${client.RequestCount}</td>
+                            <td>${client.LastAccessFormatted}</td>
+                        </tr>
+                    ` + "`" + `).join('');
                 });
         }, 1000);
     </script>
 </body>
-</html>
-`
+</html>`
 
 var (
 	srv  *http.Server
@@ -97,8 +164,9 @@ func Start() {
 			}
 
 			data := guiData{
-				Stats: stats.GetCurrentStats().String(),
-				Port:  port,
+				Stats:    template.HTML(stats.GetCurrentStats().String()),
+				Port:     port,
+				TopStats: stats.GetTopClients(10),
 			}
 
 			tmpl.Execute(w, data)
@@ -107,6 +175,12 @@ func Start() {
 		// Handle stats updates
 		mux.HandleFunc("/stats", func(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprint(w, stats.GetCurrentStats().String())
+		})
+
+		// Handle top stats
+		mux.HandleFunc("/topstats", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(stats.GetTopClients(10))
 		})
 
 		srv = &http.Server{
