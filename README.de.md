@@ -97,20 +97,59 @@ Dies erstellt einen `dist`-Ordner mit allen benötigten Dateien:
 ### 2. Manueller Build
 
 ```powershell
-# Binary erstellen
-go build -o mlcproxy.exe cmd/proxy/main.go
+# Als Administrator ausführen, wenn Berechtigungsprobleme auftreten
+# Alternativ: PowerShell als Administrator starten
 
-# Static-Ordner erstellen falls nicht vorhanden
-mkdir -Force static
-
-# Statische Dateien kopieren
-Copy-Item -Path "internal/stats/static/*" -Destination "static/" -Force -Recurse
-
-# config.ini kopieren (falls nicht vorhanden)
-if (-not (Test-Path "config.ini")) {
-    Copy-Item "config.ini.example" "config.ini"
+# Build-Funktion definieren
+function Build-MLCProxy {
+    try {
+        # Sicherstellen, dass keine alte Instanz läuft
+        Get-Process "mlcproxy" -ErrorAction SilentlyContinue | 
+            Stop-Process -Force -ErrorAction SilentlyContinue
+        
+        # Warten bis Prozesse beendet sind
+        Start-Sleep -Seconds 2
+        
+        # Alte Dateien entfernen
+        if (Test-Path mlcproxy.exe) {
+            Remove-Item -Path mlcproxy.exe -Force
+        }
+        
+        # Binary erstellen
+        Write-Host "Kompiliere mlcproxy..." -ForegroundColor Yellow
+        & go build -o mlcproxy.exe cmd/proxy/main.go
+        if (-not $?) { throw "Build fehlgeschlagen" }
+        
+        # Static-Ordner vorbereiten
+        Write-Host "Kopiere statische Dateien..." -ForegroundColor Yellow
+        if (Test-Path static) {
+            Remove-Item -Path static -Recurse -Force
+        }
+        mkdir -Force static | Out-Null
+        
+        # Statische Dateien kopieren
+        Copy-Item -Path "internal/stats/static/*" -Destination "static/" -Force -Recurse
+        
+        # Config erstellen falls nicht vorhanden
+        if (-not (Test-Path "config.ini")) {
+            Write-Host "Erstelle initiale config.ini..." -ForegroundColor Yellow
+            Copy-Item "config.ini.example" "config.ini"
+        }
+        
+        Write-Host "Build erfolgreich abgeschlossen!" -ForegroundColor Green
+        return $true
+    }
+    catch {
+        Write-Host "Build fehlgeschlagen: $_" -ForegroundColor Red
+        return $false
+    }
 }
+
+# Build ausführen
+Build-MLCProxy
 ```
+
+Wenn Sie Berechtigungsprobleme haben, führen Sie PowerShell als Administrator aus und versuchen Sie es erneut.
 
 ## Verwendung
 

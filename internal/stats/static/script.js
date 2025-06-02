@@ -438,9 +438,6 @@ updateStats();
 // Set up automatic updates
 setInterval(updateStats, UPDATE_INTERVAL);
 
-// Update the displayed refresh interval
-document.querySelector('.update-interval').textContent = UPDATE_INTERVAL / 1000;
-
 /**
  * Manages theme switching functionality
  */

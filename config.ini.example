@@ -1,0 +1,36 @@
+# MLCProxy Konfiguration
+
+[server]
+# Port auf dem der Proxy läuft
+port = 3128
+
+[paths]
+# Basis-Pfad für statische Dateien
+static_dir = static
+# URL-Pfad für die Statistik-API
+stats_path = /stat
+# URL-Pfad für die API-Endpunkte
+api_path = /api
+
+[features]
+# Hostname für die Statistik-Seite
+stats_host = stats.local
+
+[auth]
+# Aktiviere Basic Auth (true/false)
+enable_auth = true
+# Benutzername:Passwort Paare (mehrere möglich)
+credentials = admin:secret,user1:pass1
+
+[security]
+# Erlaube nur bestimmte Netzwerke (CIDR-Notation, mehrere mit Komma getrennt)
+# IPv4 Beispiele: 
+# - Einzelne IP: 192.168.1.1/32
+# - Ganzes Subnetz: 192.168.1.0/24
+# - Mehrere Netze: 192.168.1.0/24,10.0.0.0/8
+# - Alles erlauben (IPv4): 0.0.0.0/0
+# IPv6 Beispiele:
+# - Localhost: ::1/128
+# - Link-local: fe80::/10
+# - Alles erlauben (IPv6): ::/0
+allowed_networks = 127.0.0.1/32,192.168.0.0/16,::1/128,fe80::/10

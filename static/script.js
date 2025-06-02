@@ -413,22 +413,27 @@ function updateClientStats(clients) {
  */
 async function updateStats() {
     try {
-        const response = await fetch('/api/stats');
+        const response = await fetch('/stat');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        updateSummary(data);
-        updateRecentRequests(data.recent_requests || []);
-        updateClientStats(data.client_stats || []);
+        const stats = await response.json();
+        updateSummaryStats(stats);
+        updateClientTable(stats.clients);
+        updateRequestsTable(stats.requests);
+        updateLastUpdateTime();
     } catch (error) {
-        console.error('Error updating stats:', error);
-        showError('Proxy server not reachable. Please check your connection.');
+        showError(`Fehler beim Laden der Statistiken: ${error.message}`);
+    }
+}
+
+/**
+ * Updates the last update time display
+ */
+function updateLastUpdateTime() {
+    const lastUpdateElement = document.querySelector('.last-update');
+    if (lastUpdateElement) {
+        lastUpdateElement.textContent = formatDate(Date.now());
     }
 }
 
@@ -437,9 +442,6 @@ updateStats();
 
 // Set up automatic updates
 setInterval(updateStats, UPDATE_INTERVAL);
-
-// Update the displayed refresh interval
-document.querySelector('.update-interval').textContent = UPDATE_INTERVAL / 1000;
 
 /**
  * Manages theme switching functionality
