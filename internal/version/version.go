@@ -8,8 +8,8 @@ package version
 
 // Version information
 const (
-	Version   = "1.0.0"
-	BuildDate = "2025-06-02"
+	Version   = "1.0.1b"
+	BuildDate = "2025-06-03"
 	Copyright = "© 2025 Michael Lechner"
 )
 

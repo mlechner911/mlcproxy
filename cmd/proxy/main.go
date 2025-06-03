@@ -18,10 +18,9 @@ import (
 
 func main() {
 	// Command line flags
-	proxyPort := flag.Int("port", 0, "Port für den Proxy-Server (überschreibt config.ini)")
+	proxyPort := flag.Int("port", 0, "Port for the proxy server (overrides config.ini)")
 	showVersion := flag.Bool("version", false, "Show version information and exit")
 	flag.Parse()
-
 	if *showVersion {
 		fmt.Printf("MLCProxy %s\n", version.GetVersionInfo())
 		fmt.Println(version.Copyright)
@@ -31,21 +30,25 @@ func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
 	log.Printf("Starting MLCProxy %s...", version.GetVersionInfo())
 
-	// Lade Konfiguration
+	// Load configuration
 	if err := config.LoadConfig(); err != nil {
-		log.Printf("Warnung: Konnte Konfiguration nicht laden: %v", err)
-		log.Println("Verwende Standard-Einstellungen")
+		log.Printf("Warning: Could not load configuration: %v", err)
+		log.Println("Using default settings")
 	}
 
-	// Command line flags überschreiben Konfiguration
+	// Command line flags override configuration
 	port := config.Cfg.Server.Port
 	if *proxyPort != 0 {
 		port = *proxyPort
 	}
-
 	// Start proxy server
 	proxyAddr := fmt.Sprintf(":%d", port)
+	log.Printf("Starting proxy server on port %d...", port)
+
 	if err := proxy.Start(proxyAddr); err != nil {
-		log.Fatalf("Proxy server error: %v", err)
+		log.Printf("Error starting proxy server: %v", err)
+		fmt.Println("\nPress any key to exit...")
+		fmt.Scanln()
+		log.Fatal("Terminating program due to error")
 	}
 }

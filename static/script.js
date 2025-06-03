@@ -19,7 +19,7 @@ let bytesInHistory = [];
 let bytesOutHistory = [];
 let clientsHistory = [];
 
-// Tracking für Min/Max-Werte
+// Tracking for min/max values
 let requestsMinMax = { min: Infinity, max: 0 };
 let bytesInMinMax = { min: Infinity, max: 0 };
 let bytesOutMinMax = { min: Infinity, max: 0 };
@@ -162,8 +162,8 @@ function updateRequestRate(totalRequests) {
 }
 
 /**
- * Aktualisiert den Traffic-In-Graphen
- * @param {number} bytesIn - Aktuelle eingehende Bytes
+ * Updates the traffic-in graph
+ * @param {number} bytesIn - Current incoming bytes
  */
 function updateTrafficIn(bytesIn) {
     if (lastBytesIn === 0) {
@@ -207,8 +207,8 @@ function updateTrafficIn(bytesIn) {
 }
 
 /**
- * Aktualisiert den Traffic-Out-Graphen
- * @param {number} bytesOut - Aktuelle ausgehende Bytes
+ * Updates the traffic-out graph
+ * @param {number} bytesOut - Current outgoing bytes
  */
 function updateTrafficOut(bytesOut) {
     if (lastBytesOut === 0) {
@@ -252,8 +252,8 @@ function updateTrafficOut(bytesOut) {
 }
 
 /**
- * Aktualisiert den Client-Trend-Graphen
- * @param {number} activeClients - Aktuelle Anzahl aktiver Clients
+ * Updates the client trend graph
+ * @param {number} activeClients - Current number of active clients
  */
 function updateClientTrend(activeClients) {
     const clientDiff = activeClients - lastClients;
@@ -423,7 +423,7 @@ async function updateStats() {
         updateRequestsTable(stats.requests);
         updateLastUpdateTime();
     } catch (error) {
-        showError(`Fehler beim Laden der Statistiken: ${error.message}`);
+        showError(`Error loading statistics: ${error.message}`);
     }
 }
 

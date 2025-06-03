@@ -140,7 +140,18 @@ The statistics page can be accessed in two ways:
    - Set "Port" to: `3128`
    - Optional: Add `stats.local` to "Don't use proxy server for these addresses"
 
-2. Command line configuration:
+2. Install as Windows Service:
+   ```powershell
+   # Run PowerShell as Administrator
+   .\install-service.ps1
+   ```
+   This will:
+   - Create a service named "MLCProxy"
+   - Configure it to start automatically
+   - Set proper permissions
+   - Start the service immediately
+
+3. Command line configuration:
    ```powershell
    # Set proxy
    netsh winhttp set proxy proxy-server="127.0.0.1:3128"

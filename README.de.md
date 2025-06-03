@@ -181,7 +181,18 @@ Die Statistik-Seite ist auf zwei Arten erreichbar:
    - Setzen Sie "Port" auf: `3128`
    - Optional: Fügen Sie `stats.local` zu "Proxy nicht für folgende Adressen verwenden" hinzu
 
-2. Konfiguration über die Kommandozeile:
+2. Als Windows-Dienst installieren:
+   ```powershell
+   # PowerShell als Administrator ausführen
+   .\install-service.ps1
+   ```
+   Dies wird:
+   - Einen Dienst namens "MLCProxy" erstellen
+   - Ihn für automatischen Start konfigurieren
+   - Die notwendigen Berechtigungen setzen
+   - Den Dienst sofort starten
+
+3. Konfiguration über die Kommandozeile:
 
    ```powershell
    # Proxy setzen
