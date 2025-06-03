@@ -1,10 +1,5 @@
-<!--
-Copyright (c) 2025 Michael Lechner
-This software is released under the MIT License.
-See the LICENSE file for further details.
--->
 <!DOCTYPE html>
-<html lang="de">
+<html lang="en">
 
 <head>
     <title>MLCProxy Statistics</title>
@@ -16,24 +11,30 @@ See the LICENSE file for further details.
 
 <body>
     <div class="container">
-
-
         <div class="header">
             <h2> <svg style="width:1rem" xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='currentColor'>
                     <path d='M3 3v18h18v-2H5V3H3zm4 14h2v-4H7v4zm4 0h2v-8h-2v8zm4 0h2V7h-2v10z' />
                 </svg>
                 MLCProxy Status</h2>
-            <small class="refresh-info">Auto-Aktualisierung alle <span class="update-interval">5</span>s</small>
+            <div class="header-controls">
+                <div class="theme-switcher">
+                    <label for="theme-select">Theme:</label>
+                    <select id="theme-select">
+                        <option value="auto">Auto</option>
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+                <small class="refresh-info">Last update: <span class="last-update">-</span></small>
+            </div>
         </div>
 
-        <!-- Hier nur das leere summary-div -->
         <div class="summary"></div>
 
-        <!-- Templates außerhalb des summary-div -->
-        <!-- Error Card Template -->
+        <!-- Templates -->
         <template id="error-template">
             <div class="error-card">
-                <h4>Fehler</h4>
+                <h4>Error</h4>
                 <p data-placeholder="message"></p>
             </div>
         </template>
@@ -41,8 +42,21 @@ See the LICENSE file for further details.
         <!-- Stat Card Templates -->
         <template id="total-requests-template">
             <div class="stat-card">
-                <h4>Gesamtanfragen</h4>
+                <h4>Total Requests</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Requests/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0/s</span>
+                            <span class="max">Max: 0/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -50,6 +64,19 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Traffic In</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Bytes/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line traffic-in" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0 B/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0 B/s</span>
+                            <span class="max">Max: 0 B/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
@@ -57,55 +84,85 @@ See the LICENSE file for further details.
             <div class="stat-card">
                 <h4>Traffic Out</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Bytes/s</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line traffic-out" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0 B/s</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0 B/s</span>
+                            <span class="max">Max: 0 B/s</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
         <template id="active-clients-template">
             <div class="stat-card">
-                <h4>Aktive Clients</h4>
+                <h4>Active Clients</h4>
                 <p data-placeholder="value"></p>
+                <div class="metric-graph">
+                    <h5>Trend</h5>
+                    <svg class="rate-graph" width="200" height="50" preserveAspectRatio="none">
+                        <path class="rate-line clients" d=""></path>
+                    </svg>
+                    <div class="metric-stats">
+                        <span class="rate-value">0</span>
+                        <span class="trend-indicator">→</span>
+                        <small class="min-max">
+                            <span class="min">Min: 0</span>
+                            <span class="max">Max: 0</span>
+                        </small>
+                    </div>
+                </div>
             </div>
         </template>
 
         <div class="stats">
             <div class="section">
-                <h3>Top 10 Clients nach Traffic</h3>
+                <h3>Top 10 Clients by Traffic</h3>
                 <table class="client-stats">
                     <thead>
                         <tr>
                             <th>IP</th>
                             <th>Traffic In</th>
                             <th>Traffic Out</th>
-                            <th>Gesamt Traffic</th>
-                            <th>Anfragen</th>
-                            <th>Letzter Zugriff</th>
+                            <th>Total Traffic</th>
+                            <th>Requests</th>
+                            <th>Last Seen</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
             <div class="section">
-                <h3>Letzte Anfragen</h3>
+                <h3>Recent Requests</h3>
                 <table class="recent-requests">
                     <thead>
-                        <tr>
-                            <th>Zeit</th>
+                        <tr>                            <th>Time</th>
                             <th>Client</th>
-                            <th>Methode</th>
+                            <th>Method</th>
                             <th>Host</th>
-                            <th>Pfad</th>
+                            <th>Path</th>
                             <th>Status</th>
                             <th>Bytes</th>
+                            <th>Count</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
                 </table>
             </div>
-
-
         </div>
+    </div>    <script src="script.js"></script>    <div class="footer">
+        <p>
+            MLCProxy v1.0.0 - <span class="copyright">© 2025 Michael Lechner.</span>
+            Released under the <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener">MIT License</a>.
+            <a href="https://github.com/mlechner911/mlcproxy" target="_blank" rel="noopener">Source Code</a>
+        </p>
     </div>
-    <script src="script.js"></script>
 </body>
 
 </html>

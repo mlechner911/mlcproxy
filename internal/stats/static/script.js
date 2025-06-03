@@ -413,27 +413,33 @@ function updateClientStats(clients) {
  */
 async function updateStats() {
     try {
-        const response = await fetch('/api/stats');
+        const response = await fetch('./stats.json');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error);
-        }
-
-        updateSummary(data);
-        updateRecentRequests(data.recent_requests || []);
-        updateClientStats(data.client_stats || []);
+        const stats = await response.json();
+        updateSummary(stats);
+        updateClientStats(stats.client_stats || []);
+        updateRecentRequests(stats.recent_requests || []);
+        updateLastUpdateTime();
     } catch (error) {
         console.error('Error updating stats:', error);
-        showError('Proxy server not reachable. Please check your connection.');
+        showError('Verbindung zum Proxy-Server nicht möglich. Bitte überprüfen Sie die Verbindung.');
     }
 }
 
 // Initialize statistics display
 updateStats();
+
+/**
+ * Updates the last update time display
+ */
+function updateLastUpdateTime() {
+    const element = document.querySelector('.last-update');
+    if (element) {
+        element.textContent = formatDate(Date.now());
+    }
+}
 
 // Set up automatic updates
 setInterval(updateStats, UPDATE_INTERVAL);

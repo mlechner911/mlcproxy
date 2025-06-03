@@ -15,23 +15,9 @@ import (
 	"mlc_goproxy/internal/stats"
 	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 )
-
-// TrackingReader wraps an io.Reader to track the number of bytes read
-type TrackingReader struct {
-	r         io.Reader
-	bytesRead uint64
-}
-
-func (t *TrackingReader) Read(p []byte) (n int, err error) {
-	n, err = t.r.Read(p)
-	t.bytesRead += uint64(n)
-	return
-}
 
 // getClientIP extracts the client's IP address from the request
 func getClientIP(r *http.Request) string {
@@ -118,20 +104,32 @@ type ProxyHandler struct {
 }
 
 // ServeHTTP handles all incoming HTTP requests
-func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // Direct request to stats path
-	if strings.HasPrefix(r.URL.Path, h.statsPath) {
-		h.handleStats(w, r)
-		return
-	}
-
+func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Extract actual host without port
 	host := r.Host
 	if strings.Contains(host, ":") {
 		host = strings.Split(host, ":")[0]
 	}
+	// Check if this is a stats request (either via stats.local or /stats or /stat path)
+	if host == h.statsHost || strings.HasPrefix(r.URL.Path, "/stats") || strings.HasPrefix(r.URL.Path, "/stat/") || r.URL.Path == "/stat" {
+		// Check for recursion
+		if r.Header.Get("X-MLCProxy-Internal") == "true" {
+			http.Error(w, "Loop detected", http.StatusInternalServerError)
+			return
+		}
+		r.Header.Set("X-MLCProxy-Internal", "true")
 
-	// Check for stats host (always allowed) - legacy support
-	if host == h.statsHost {
+		// Normalize path: /stat -> /stats
+		r.URL.Path = strings.ReplaceAll(r.URL.Path, "/stat/", "/stats/")
+		if r.URL.Path == "/stat" {
+			r.URL.Path = "/stats"
+		}
+
+		// Remove /stats prefix if present
+		originalPath := r.URL.Path
+		if strings.HasPrefix(originalPath, "/stats") {
+			r.URL.Path = strings.TrimPrefix(originalPath, "/stats")
+		}
 		h.handleStats(w, r)
 		return
 	}
@@ -169,82 +167,6 @@ func (h *ProxyHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // Di
 	h.handleHTTP(w, r)
 }
 
-// getPreferredLanguage extracts the preferred language from Accept-Language header
-func (h *ProxyHandler) getPreferredLanguage(r *http.Request) string {
-	acceptLang := r.Header.Get("Accept-Language")
-	if acceptLang == "" {
-		return "de" // Default to German
-	}
-
-	// Extract language from header (e.g., "en-US,en;q=0.9" -> "en")
-	parts := strings.Split(acceptLang, ",")
-	if len(parts) > 0 {
-		langParts := strings.Split(parts[0], "-")
-		if len(langParts) > 0 {
-			return strings.ToLower(langParts[0])
-		}
-	}
-
-	return "de" // Default to German
-}
-
-// handleStats serves the statistics interface and API
-func (h *ProxyHandler) handleStats(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path
-	switch {
-	case path == h.apiPath+"/stats":
-		// API endpoint for statistics
-		handleStatsAPI(w, r)
-	case path == h.statsPath || path == "/" || path == "":
-		// Main page with language selection
-		lang := h.getPreferredLanguage(r)
-
-		// Try language-specific file first
-		htmlFile := filepath.Join(config.Cfg.Paths.StaticDir, fmt.Sprintf("index.%s.html", lang))
-		log.Printf("Trying to serve HTML file: %s", htmlFile)
-
-		if _, err := os.Stat(htmlFile); os.IsNotExist(err) {
-			// Fall back to default file
-			htmlFile = filepath.Join(config.Cfg.Paths.StaticDir, "index.html")
-			log.Printf("File not found, falling back to: %s", htmlFile)
-		}
-
-		// Check if file exists
-		if _, err := os.Stat(htmlFile); os.IsNotExist(err) {
-			log.Printf("HTML file not found: %s", htmlFile)
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		http.ServeFile(w, r, htmlFile)
-
-	case strings.HasPrefix(path, "/styles.css"):
-		// Serve CSS file
-		cssFile := filepath.Join(config.Cfg.Paths.StaticDir, "styles.css")
-		log.Printf("Trying to serve CSS file: %s", cssFile)
-		if _, err := os.Stat(cssFile); os.IsNotExist(err) {
-			log.Printf("CSS file not found: %s", cssFile)
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		http.ServeFile(w, r, cssFile)
-
-	case strings.HasPrefix(path, "/script.js"):
-		// Serve JavaScript file
-		jsFile := filepath.Join(config.Cfg.Paths.StaticDir, "script.js")
-		log.Printf("Trying to serve JS file: %s", jsFile)
-		if _, err := os.Stat(jsFile); os.IsNotExist(err) {
-			log.Printf("JavaScript file not found: %s", jsFile)
-			http.Error(w, "File not found", http.StatusNotFound)
-			return
-		}
-		http.ServeFile(w, r, jsFile)
-
-	default:
-		// All other paths are not allowed
-		http.NotFound(w, r)
-	}
-}
-
 // handleHTTP handles standard HTTP proxy requests
 func (h *ProxyHandler) handleHTTP(w http.ResponseWriter, r *http.Request) {
 	// Handle Chrome DevTools requests
@@ -253,12 +175,11 @@ func (h *ProxyHandler) handleHTTP(w http.ResponseWriter, r *http.Request) {
 		stats.LogRequest(r, http.StatusOK, 2, 2)
 		return
 	}
-
 	// Track request body size
-	var requestReader TrackingReader
+	var requestReader *TrackingReader
 	if r.Body != nil {
-		requestReader = TrackingReader{r: r.Body}
-		r.Body = io.NopCloser(&requestReader)
+		requestReader = NewTrackingReader(r.Body)
+		r.Body = io.NopCloser(requestReader)
 	}
 
 	// Ensure complete URL
@@ -287,15 +208,18 @@ func (h *ProxyHandler) handleHTTP(w http.ResponseWriter, r *http.Request) {
 
 	copyHeader(w.Header(), resp.Header)
 	w.WriteHeader(resp.StatusCode)
-
 	// Track response body size
-	responseReader := &TrackingReader{r: resp.Body}
+	responseReader := NewTrackingReader(resp.Body)
 	_, err = io.Copy(w, responseReader)
 	if err != nil {
 		log.Printf("Error copying response: %v", err)
 	}
 
-	stats.LogRequest(r, resp.StatusCode, int64(requestReader.bytesRead), int64(responseReader.bytesRead))
+	var requestBytes int64
+	if requestReader != nil {
+		requestBytes = int64(requestReader.BytesRead())
+	}
+	stats.LogRequest(r, resp.StatusCode, requestBytes, int64(responseReader.BytesRead()))
 }
 
 // handleHTTPS handles HTTPS CONNECT tunnel requests
@@ -341,10 +265,9 @@ func (h *ProxyHandler) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Failed to send 200 response: %v", err)
 		return
 	}
-
 	// Set up traffic tracking
-	clientReader := &TrackingReader{r: clientConn}
-	targetReader := &TrackingReader{r: targetConn}
+	clientReader := NewTrackingReader(clientConn)
+	targetReader := NewTrackingReader(targetConn)
 
 	// Create bidirectional tunnel
 	done := make(chan bool, 2)
@@ -365,19 +288,6 @@ func (h *ProxyHandler) handleHTTPS(w http.ResponseWriter, r *http.Request) {
 
 	// Wait for either direction to finish
 	<-done
-
 	// Log transfer statistics
-	stats.LogRequest(r, http.StatusOK, int64(clientReader.bytesRead), int64(targetReader.bytesRead))
-}
-
-// handleDevToolsRequest handles Chrome DevTools protocol requests
-func handleDevToolsRequest(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("{}"))
-}
-
-// handleStatsAPI serves the statistics API endpoint
-func handleStatsAPI(w http.ResponseWriter, r *http.Request) {
-	stats.GetStats().ServeHTTP(w, r)
+	stats.LogRequest(r, http.StatusOK, int64(clientReader.BytesRead()), int64(targetReader.BytesRead()))
 }
