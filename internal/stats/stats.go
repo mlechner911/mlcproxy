@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"mlc_goproxy/internal/config"
+	"mlc_goproxy/internal/version"
 	"net"
 	"net/http"
 	"path/filepath"
@@ -215,10 +216,14 @@ func (s *Stats) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	response := struct {
 		*Stats
+		Version        string        `json:"version"`
+		BuildDate      string        `json:"build_date"`
 		RecentRequests []RequestInfo `json:"recent_requests"`
 		ClientStats    []ClientStats `json:"client_stats"`
 	}{
 		Stats:          s,
+		Version:        version.Version,
+		BuildDate:      version.BuildDate,
 		RecentRequests: s.RecentRequests,
 		ClientStats:    s.getTopClients(10),
 	}
